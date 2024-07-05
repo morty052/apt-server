@@ -3,10 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon src/index.js",
+    "dev": "nodemon ./src/index.ts",
     "start": "node src/index.js",
     "host": "ngrok http 3000"
   },
@@ -15,6 +14,7 @@
   "license": "ISC",
   "dependencies": {
     "@google/generative-ai": "^0.13.0",
+    "@types/express": "^4.17.21",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "redis": "^4.6.14",
@@ -22,6 +22,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.14.9",
+    "nodemon": "^3.1.4",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.3"
   }

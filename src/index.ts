@@ -2,9 +2,10 @@ import express, { json } from "express";
 import { createClient } from "redis";
 import { createServer } from "http";
 import { Server } from "socket.io";
-import { gemini } from "./services/gemini.js";
-import { handleCountDown } from "./timer.js";
+import { gemini } from "./services/gemini";
+import { handleCountDown } from "./timer";
 
+// @ts-ignore
 async function verifyAnswer({ query, type }) {
   const prompt = `return a  JSON object in this format "isReal" as a boolean and "description" as a string, to the following question, "is this ${type} real? " "${query}"`;
 
@@ -23,15 +24,17 @@ const client = createClient({
   },
 });
 
-await client
+client
   .connect()
   .then(() => console.log("Connected to Redis"))
   .catch((err) => console.log(err));
 
+// @ts-ignore
 const addToQueue = async (player, lobbyType) => {
   await client.rPush(`${lobbyType}_LOBBY`, JSON.stringify(player));
 };
 
+// @ts-ignore
 const createRoom = async (player) => {
   await client.rPush(`DUO_ROOM_${player.username}`, JSON.stringify(player));
 };
@@ -76,7 +79,9 @@ userNameSpace.on("connection", (socket) => {
   socket.on("FIND_MATCH", async (data, cb) => {
     console.log("finding match", data);
 
-    await addToQueue(data.player);
+    const { player, lobbyType } = data;
+
+    await addToQueue(player, lobbyType);
 
     const queue = await getQueue();
 
@@ -148,6 +153,7 @@ userNameSpace.on("connection", (socket) => {
 
 app.get("/", async (req, res) => {
   //   await client.del("DUO_LOBBY");
+  // @ts-ignore
   handleCountDown({ userNameSpace, room: 10 });
   res.send("json");
 });
