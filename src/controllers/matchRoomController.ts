@@ -1,6 +1,6 @@
 import client from "../services/redis";
-import { handleCountDown } from "../timer";
-import { PlayerProps, SocketProps } from "../types";
+import { handleCountDown, handleTallyCountDown } from "../timer";
+import { AnswerProps, PlayerProps, SocketProps } from "../types";
 import { userNameSpace } from "./socketController";
 
 type OperationTypes = "READY_PLAYER" | "EXIT_TALLY_MODE" | "UPDATE_ANSWERS";
@@ -27,8 +27,32 @@ const checkAllPlayersDoneTallying = (data: PlayerProps[]): boolean => {
   return false;
 };
 
+const checkHalfPlayersDoneTallying = (playerList: PlayerProps[]): boolean => {
+  const playerCount = playerList.length;
+
+  const totalPlayersDone = playerList.filter(
+    (player) => player.doneTallying
+  ).length;
+
+  if (totalPlayersDone >= playerCount / 2) {
+    return true;
+  }
+
+  return false;
+};
+
 const allPlayersSubmitted = (playerList: PlayerProps[]) => {
   if (playerList.every((player) => player.submitted)) {
+    return true;
+  }
+
+  return false;
+};
+
+const checkForfeitedAnswers = (answers: AnswerProps): boolean => {
+  const answersArray = Object.values(answers);
+
+  if (answersArray.some((answer) => answer === "FORFEITED")) {
     return true;
   }
 
@@ -54,9 +78,26 @@ const exitPlayerFromTally = async ({
     return player;
   });
 
+  // * check if half of players ready to leave tally mode
+  const halfOfPlayersDoneTallying =
+    checkHalfPlayersDoneTallying(updatedPlayers);
+
+  // * check if all players ready to leave tally mode
   const allPlayersExitedTally = checkAllPlayersDoneTallying(updatedPlayers);
 
+  // * handle 50% of players ready to leave tally mode
+  if (halfOfPlayersDoneTallying) {
+    // * start countdown for remaining players to exit
+    handleTallyCountDown({ room });
+    // * update room on redis DB
+    await client.hSet(room, {
+      players: JSON.stringify(updatedPlayers),
+    });
+  }
+
+  // * handle all players ready to leave tally mode
   if (allPlayersExitedTally) {
+    // * Present final tally modal on player device
     userNameSpace.to(room).emit("SHOW_FINAL_TALLY");
 
     // * reset all players answers and tallymode
@@ -67,14 +108,18 @@ const exitPlayerFromTally = async ({
         answers: { Name: "", Animal: "", Place: "", Thing: "" },
       };
     });
+
+    // * update room on redis DB
     await client.hSet(room, {
       players: JSON.stringify(updatedPlayers),
     });
     return;
   }
 
+  // * handle single player ready to leave tally mode
   userNameSpace.to(room).emit("PLAYER_DONE_TALLYING", { playerToExitTally });
 
+  // * update room on redis DB
   await client.hSet(room, {
     players: JSON.stringify(updatedPlayers),
   });
@@ -89,10 +134,22 @@ const updatePlayersAnswers = async ({
   playerToUpdate: PlayerProps;
   answers: PlayerProps["answers"];
 }) => {
+  // * get all players in room
   const players = await getPlayersInRoom(room);
 
+  // * check if player forfeited any answer
+  const playerHasForfeitedAnswers = checkForfeitedAnswers(answers);
+
+  // * update target players answers / set submitted to true / increment strikes where applicable
   const updatedPlayers = players.map((player) => {
     if (player.username === playerToUpdate.username) {
+      if (playerHasForfeitedAnswers) {
+        return {
+          ...player,
+          strikes: player.strikes + 1,
+          submitted: true,
+        };
+      }
       return {
         ...player,
         answers,
@@ -102,8 +159,10 @@ const updatePlayersAnswers = async ({
     return player;
   });
 
-  const allPlayersSubmittedAnswers = allPlayersSubmitted(updatedPlayers);
+  // check if all players submitted
+  // const allPlayersSubmittedAnswers = allPlayersSubmitted(updatedPlayers);
 
+  // handle all players submitted
   // if (allPlayersSubmittedAnswers) {
   //   const updatedPlayers = players.map((player) => {
   //     if (player.username === playerToUpdate.username) {
@@ -130,6 +189,7 @@ const updatePlayersAnswers = async ({
   //   return;
   // }
 
+  // * send back updated players list to players in room
   userNameSpace.to(room).emit("PLAYER_SUBMITTED", {
     username: playerToUpdate.username,
     updatedPlayers,

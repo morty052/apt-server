@@ -13,6 +13,7 @@ export type PlayerProps = {
   doneTallying: boolean;
   answers: AnswerProps;
   submitted: boolean;
+  strikes: number;
 };
 
 export type SocketProps = Socket;

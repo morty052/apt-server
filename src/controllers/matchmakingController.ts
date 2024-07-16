@@ -82,6 +82,7 @@ export const handleMatchMaking = async ({
         inTallyMode: false,
         answers: { Name: "", Animal: "", Place: "", Thing: "" },
         submitted: false,
+        strikes: 0,
       };
     });
 
