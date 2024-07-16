@@ -1,6 +1,7 @@
-import { Socket } from "socket.io";
+import { userNameSpace } from "./controllers/socketController";
+import { SocketProps } from "./types";
 
-export const handleCountDown = ({ socket }: { socket: Socket }) => {
+export const handleCountDown = ({ room }: { room: string }) => {
   let seconds = 10;
   const stopTimer = () => {
     clearInterval(timeInterval);
@@ -9,15 +10,23 @@ export const handleCountDown = ({ socket }: { socket: Socket }) => {
   };
 
   const timeInterval = setInterval(() => {
+    // * WHEN TIMER ENDS
     if (seconds === 0) {
-      socket.emit("DECREASE_SECONDS", { seconds });
-      socket.emit("TIME_UP", { seconds });
+      userNameSpace.to(room).emit("TIME_UP", { seconds });
       stopTimer();
+      return;
+    }
+
+    // * WHEN TIMER STARTS
+    if (seconds === 10) {
+      userNameSpace.to(room).emit("START_COUNTDOWN", { seconds });
+      const time = `time is ${seconds}`;
+      console.log(time);
+      seconds--;
       return;
     }
     const time = `time is ${seconds}`;
     console.log(time);
-    socket.emit("DECREASE_SECONDS", { seconds });
     seconds--;
   }, 1000);
 };

@@ -1,13 +1,16 @@
-import express, { json } from "express";
-import { createClient } from "redis";
-import { createServer } from "http";
-import { Server } from "socket.io";
 import { gemini } from "./services/gemini";
 import { handleCountDown } from "./timer";
+import { LobbyType, PlayerProps } from "./types";
+import { app, httpServer } from "./models/server";
+import { userNameSpace } from "./controllers/socketController";
+import { handleMatchMaking } from "./controllers/matchmakingController";
+import {
+  updateRoom,
+  updateSelectedLetter,
+} from "./controllers/matchRoomController";
 
-// @ts-ignore
-async function verifyAnswer({ query, type }) {
-  const prompt = `return a  JSON object in this format "isReal" as a boolean and "description" as a string, to the following question, "is this ${type} real? " "${query}"`;
+async function verifyAnswer({ query, type }: { query: string; type: string }) {
+  const prompt = `return a  JSON object in this format "isReal" as a boolean and "description" as a string with a short description of about 4 lines of the answer, to the following question, "is this ${type} real? " "${query}"`;
 
   const result = await gemini.generateContent(prompt);
   const response = await result.response;
@@ -15,56 +18,6 @@ async function verifyAnswer({ query, type }) {
   console.log(text);
   return text;
 }
-
-const client = createClient({
-  password: "a6GbwDFrRFgqDj88xZMgvG59dMzsqqcG",
-  socket: {
-    host: "redis-12535.c331.us-west1-1.gce.redns.redis-cloud.com",
-    port: 12535,
-  },
-});
-
-client
-  .connect()
-  .then(() => console.log("Connected to Redis"))
-  .catch((err) => console.log(err));
-
-// @ts-ignore
-const addToQueue = async (player, lobbyType) => {
-  await client.rPush(`${lobbyType}_LOBBY`, JSON.stringify(player));
-};
-
-// @ts-ignore
-const createRoom = async (player) => {
-  await client.rPush(`DUO_ROOM_${player.username}`, JSON.stringify(player));
-};
-
-const addToRoom = async () => {
-  const data = await client.lRange("DUO_LOBBY", 0, -1);
-  return data.map((player) => JSON.parse(player));
-};
-
-const getQueue = async () => {
-  const data = await client.lRange("DUO_LOBBY", 0, -1);
-  return data.map((player) => JSON.parse(player));
-};
-
-const app = express();
-app.use(json());
-
-const httpServer = createServer(app);
-const io = new Server(httpServer, {
-  cors: {
-    origin: "*",
-  },
-});
-
-io.on("connection", (socket) => {
-  // ...
-  console.log("io connected", socket.id);
-});
-
-const userNameSpace = io.of("/user");
 
 userNameSpace.on("connection", (socket) => {
   // ...
@@ -77,67 +30,58 @@ userNameSpace.on("connection", (socket) => {
   });
 
   socket.on("FIND_MATCH", async (data, cb) => {
-    console.log("finding match", data);
-
-    const { player, lobbyType } = data;
-
-    await addToQueue(player, lobbyType);
-
-    const queue = await getQueue();
-
-    // * handle 1 player in the queue
-    if (queue.length === 1) {
-      socket.join(`DUO_LOBBY_${data.player.username}`);
-      createRoom(data.player);
-      cb({
-        message: "Lobby created",
-      });
-      return;
-    }
-
-    if (queue.length === 2) {
-      await socket.join(`DUO_LOBBY_${queue[0].username}`);
-      await client.del("DUO_LOBBY");
-      const lobby = queue.map((player, index) => {
-        return {
-          ...player,
-          turn: index,
-        };
-      });
-      userNameSpace.to(`DUO_LOBBY_${queue[0].username}`).emit("MATCH_FOUND", {
-        queue: lobby,
-        room: `DUO_LOBBY_${queue[0].username}`,
-      });
-      return;
-    }
-
-    cb(queue);
+    // const dat = await client.del(`${data.lobbyType}_LOBBY`);
+    // console.log(dat);
+    handleMatchMaking({ data, socket, cb });
   });
+
+  socket.on(
+    "JOIN_ROOM",
+    async (data: { player: PlayerProps; room: string }, cb) => {
+      const { player, room } = data;
+      console.log({ player, room });
+    }
+  );
 
   socket.on("SELECT_LETTER", async (data) => {
     const { room, letter } = data;
-    console.log({ room, letter });
-    userNameSpace.to(room).emit("LETTER_SELECTED", { letter });
+    await updateSelectedLetter({ room, letter, socket });
   });
 
   socket.on("SUBMIT_ANSWERS", async (data) => {
     const { room, player } = data;
     console.log({ room, player });
-    userNameSpace.to(room).emit("PLAYER_SUBMITTED", { player });
+    await updateRoom({
+      player,
+      room,
+      operation: "UPDATE_ANSWERS",
+    });
   });
 
   socket.on("START_COUNTDOWN", async (data) => {
     const { room } = data;
-    handleCountDown({ socket });
+    handleCountDown({ room });
   });
 
   socket.on("VERIFY_ANSWER", async (data, cb) => {
     const { room, username, query, type } = data;
     console.log({ room, username, query, type });
+    userNameSpace.to(room).emit("WAITING_VERDICT", { username, query, type });
     const response = await verifyAnswer({ type, query });
     const verdict = JSON.parse(response);
     userNameSpace.to(room).emit("VERDICT_RECEIVED", { username, verdict });
     cb({ verdict });
+  });
+
+  socket.on("BUST_PLAYER", async (data) => {
+    const { room, username, answer, type } = data;
+    console.log({ room, username, answer, type });
+    userNameSpace.to(room).emit("PLAYER_BUSTED", { username, answer, type });
+  });
+
+  socket.on("PLAYER_DONE_TALLYING", async (data) => {
+    const { player, room, operation } = data;
+    await updateRoom({ player, room, operation: "EXIT_TALLY_MODE" });
   });
 
   socket.on("ROUND_ENDED", async (data) => {
