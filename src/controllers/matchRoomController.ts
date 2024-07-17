@@ -16,6 +16,26 @@ const getPlayersInRoom = async (room: string): Promise<PlayerProps[]> => {
   }
 };
 
+export const getRoomDetails = async (
+  room: string
+): Promise<{ players: PlayerProps[]; round: number }> => {
+  try {
+    const data = await client.hGetAll(room);
+    const players = JSON.parse(data.players);
+    const round = JSON.parse(data.round);
+    return { players, round };
+  } catch (error) {
+    console.log(error);
+    return { players: [], round: 0 };
+  }
+};
+
+const getPlayer = (players: PlayerProps[], username: string) => {
+  const player = players.find((player) => player.username === username);
+
+  return player;
+};
+
 const checkAllPlayersDoneTallying = (data: PlayerProps[]): boolean => {
   const allPlayersDone = data.every((player) => player.doneTallying);
 
@@ -59,6 +79,15 @@ const checkForfeitedAnswers = (answers: AnswerProps): boolean => {
   return false;
 };
 
+const checkForPlayerDeath = (player: PlayerProps): boolean => {
+  console.log({ strikes: player.strikes });
+  if (player.strikes + 1 >= 4) {
+    return true;
+  }
+
+  return false;
+};
+
 const exitPlayerFromTally = async ({
   room,
   playerToExitTally,
@@ -66,7 +95,9 @@ const exitPlayerFromTally = async ({
   room: string;
   playerToExitTally: PlayerProps;
 }) => {
-  const players = await getPlayersInRoom(room);
+  // const players = await getPlayersInRoom(room);
+
+  const { players, round } = await getRoomDetails(room);
 
   const updatedPlayers = players.map((player) => {
     if (player.username === playerToExitTally.username) {
@@ -97,8 +128,14 @@ const exitPlayerFromTally = async ({
 
   // * handle all players ready to leave tally mode
   if (allPlayersExitedTally) {
+    // * check if game should end after tally
+    if (round + 1 > 10) {
+      userNameSpace.to(room).emit("GAME_OVER");
+      return;
+    }
+
     // * Present final tally modal on player device
-    userNameSpace.to(room).emit("SHOW_FINAL_TALLY");
+    userNameSpace.to(room).emit("SHOW_FINAL_TALLY", { nextRound: round + 1 });
 
     // * reset all players answers and tallymode
     const updatedPlayers = players.map((player) => {
@@ -109,9 +146,10 @@ const exitPlayerFromTally = async ({
       };
     });
 
-    // * update room on redis DB
+    // * update room on redis DB / increase round
     await client.hSet(room, {
       players: JSON.stringify(updatedPlayers),
+      round: round + 1,
     });
     return;
   }
@@ -137,6 +175,8 @@ const updatePlayersAnswers = async ({
   // * get all players in room
   const players = await getPlayersInRoom(room);
 
+  const player = getPlayer(players, playerToUpdate.username);
+
   // * check if player forfeited any answer
   const playerHasForfeitedAnswers = checkForfeitedAnswers(answers);
 
@@ -158,6 +198,20 @@ const updatePlayersAnswers = async ({
     }
     return player;
   });
+
+  // // * check if player should die
+  // const playerHasDied = checkForPlayerDeath(player as PlayerProps);
+
+  // // * handle player death
+  // if (playerHasDied) {
+  //   console.log("player has died");
+  //   userNameSpace.to(room).emit("PLAYER_DIED", {
+  //     deadPlayer: playerToUpdate.username,
+  //     updatedPlayers,
+  //   });
+
+  //   return;
+  // }
 
   // check if all players submitted
   // const allPlayersSubmittedAnswers = allPlayersSubmitted(updatedPlayers);
@@ -190,6 +244,7 @@ const updatePlayersAnswers = async ({
   // }
 
   // * send back updated players list to players in room
+
   userNameSpace.to(room).emit("PLAYER_SUBMITTED", {
     username: playerToUpdate.username,
     updatedPlayers,
@@ -203,15 +258,13 @@ const updatePlayersAnswers = async ({
 export const updateSelectedLetter = async ({
   room,
   letter,
-  socket,
 }: {
   room: string;
   letter: string;
-  socket: SocketProps;
 }) => {
   console.log({ room, letter });
+  await handleCountDown({ room });
   userNameSpace.to(room).emit("LETTER_SELECTED", { letter });
-  handleCountDown({ room });
   console.log(`letter selected in ${room}  starting countdown`);
 };
 

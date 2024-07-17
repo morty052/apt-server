@@ -45,7 +45,7 @@ userNameSpace.on("connection", (socket) => {
 
   socket.on("SELECT_LETTER", async (data) => {
     const { room, letter } = data;
-    await updateSelectedLetter({ room, letter, socket });
+    await updateSelectedLetter({ room, letter });
   });
 
   socket.on("SUBMIT_ANSWERS", async (data) => {

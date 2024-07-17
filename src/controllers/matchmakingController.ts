@@ -14,8 +14,15 @@ const getMaxPlayers = (lobbyType: LobbyType) => {
   }
 };
 
-const addToQueue = async (player: PlayerProps, lobbyType: LobbyType) => {
-  await client.rPush(`${lobbyType}_LOBBY`, JSON.stringify(player));
+const addToQueue = async (
+  player: PlayerProps,
+  lobbyType: LobbyType,
+  socketId: string
+) => {
+  await client.rPush(
+    `${lobbyType}_LOBBY`,
+    JSON.stringify({ ...player, socketId })
+  );
 };
 
 const getQueue = async (lobbyType: LobbyType) => {
@@ -26,6 +33,7 @@ const getQueue = async (lobbyType: LobbyType) => {
 const createRoom = async (room: string, players: PlayerProps[]) => {
   const data = await client.hSet(room, {
     players: JSON.stringify(players),
+    round: 0,
   });
   console.log(data);
 };
@@ -51,7 +59,7 @@ export const handleMatchMaking = async ({
   const maxPlayersForLobby = getMaxPlayers(lobbyType);
 
   // * add player to queue
-  await addToQueue(player, lobbyType);
+  await addToQueue(player, lobbyType, socket.id);
 
   // * get queue
   const queue = await getQueue(lobbyType);
