@@ -85,7 +85,6 @@ export const handleTallyCountDown = async ({ room }: { room: string }) => {
     .to(room)
     .emit("START_EXIT_TALLY_COUNTDOWN", { seconds: 30, round });
   const timer = setTimeout(() => {
-    // TODO rename event
     userNameSpace.to(room).emit("TALLY_TIME_EXPIRED", { nextRound: round + 1 });
     console.log("ended countdown");
     return () => clearTimeout(timer);

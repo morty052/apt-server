@@ -1,6 +1,6 @@
 import { gemini } from "./services/gemini";
 import { handleCountDown } from "./timer";
-import { LobbyType, PlayerProps } from "./types";
+import { PlayerProps } from "./types";
 import { app, httpServer } from "./models/server";
 import { userNameSpace } from "./controllers/socketController";
 import { handleMatchMaking } from "./controllers/matchmakingController";
@@ -20,7 +20,6 @@ async function verifyAnswer({ query, type }: { query: string; type: string }) {
 }
 
 userNameSpace.on("connection", (socket) => {
-  // ...
   console.log("a user connected", socket.id);
 
   socket.on("handshake", (username, cb) => {
@@ -96,9 +95,6 @@ userNameSpace.on("connection", (socket) => {
 });
 
 app.get("/", async (req, res) => {
-  //   await client.del("DUO_LOBBY");
-  // @ts-ignore
-  handleCountDown({ userNameSpace, room: 10 });
   res.send("json");
 });
 
