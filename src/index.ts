@@ -5,6 +5,7 @@ import { app, httpServer } from "./models/server";
 import { userNameSpace } from "./controllers/socketController";
 import { handleMatchMaking } from "./controllers/matchmakingController";
 import {
+  updatePlayersAnswers,
   updateRoom,
   updateSelectedLetter,
 } from "./controllers/matchRoomController";
@@ -49,11 +50,10 @@ userNameSpace.on("connection", (socket) => {
 
   socket.on("SUBMIT_ANSWERS", async (data) => {
     const { room, player } = data;
-    console.log({ room, player });
-    await updateRoom({
-      player,
+    await updatePlayersAnswers({
       room,
-      operation: "UPDATE_ANSWERS",
+      playerToUpdate: player,
+      answers: player.answers,
     });
   });
 
@@ -67,7 +67,8 @@ userNameSpace.on("connection", (socket) => {
     console.log({ room, username, query, type });
     userNameSpace.to(room).emit("WAITING_VERDICT", { username, query, type });
     const response = await verifyAnswer({ type, query });
-    const verdict = JSON.parse(response);
+    const verdict: { isReal: boolean; description: string } =
+      JSON.parse(response);
     userNameSpace.to(room).emit("VERDICT_RECEIVED", { username, verdict });
     cb({ verdict });
   });

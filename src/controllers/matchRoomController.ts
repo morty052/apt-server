@@ -163,7 +163,7 @@ const exitPlayerFromTally = async ({
   });
 };
 
-const updatePlayersAnswers = async ({
+export const updatePlayersAnswers = async ({
   room,
   playerToUpdate,
   answers,
@@ -175,21 +175,21 @@ const updatePlayersAnswers = async ({
   // * get all players in room
   const players = await getPlayersInRoom(room);
 
-  const player = getPlayer(players, playerToUpdate.username);
+  // const player = getPlayer(players, playerToUpdate.username);
 
   // * check if player forfeited any answer
-  const playerHasForfeitedAnswers = checkForfeitedAnswers(answers);
+  // const playerHasForfeitedAnswers = checkForfeitedAnswers(answers);
 
   // * update target players answers / set submitted to true / increment strikes where applicable
   const updatedPlayers = players.map((player) => {
     if (player.username === playerToUpdate.username) {
-      if (playerHasForfeitedAnswers) {
-        return {
-          ...player,
-          strikes: player.strikes + 1,
-          submitted: true,
-        };
-      }
+      // if (playerHasForfeitedAnswers) {
+      //   return {
+      //     ...player,
+      //     strikes: player.strikes + 1,
+      //     submitted: true,
+      //   };
+      // }
       return {
         ...player,
         answers,
@@ -245,6 +245,8 @@ const updatePlayersAnswers = async ({
 
   // * send back updated players list to players in room
 
+  console.log(updatedPlayers);
+
   userNameSpace.to(room).emit("PLAYER_SUBMITTED", {
     username: playerToUpdate.username,
     updatedPlayers,
@@ -265,7 +267,7 @@ export const updateSelectedLetter = async ({
   console.log({ room, letter });
   await handleCountDown({ room });
   userNameSpace.to(room).emit("LETTER_SELECTED", { letter });
-  console.log(`letter selected in ${room}  starting countdown`);
+  // console.log(`letter selected in ${room}  starting countdown`);
 };
 
 const deleteLobby = async () => {
