@@ -19,10 +19,15 @@ const addToQueue = async (
   lobbyType: LobbyType,
   socketId: string
 ) => {
-  await client.rPush(
-    `${lobbyType}_LOBBY`,
-    JSON.stringify({ ...player, socketId })
-  );
+  try {
+    await client.rPush(
+      `${lobbyType}_LOBBY`,
+      JSON.stringify({ ...player, socketId })
+    );
+    console.log({ player, lobbyType, socketId });
+  } catch (error) {
+    console.log(error);
+  }
 };
 
 const getQueue = async (lobbyType: LobbyType) => {
