@@ -82,7 +82,7 @@ export const handleMatchMaking = async ({
 
   // * handle queue complete
   if (queue.length === maxPlayersForLobby) {
-    // * add last player to the created lobby
+    // * add last player to the created lobby channel
     await socket.join(LOBBY_NAME);
 
     //* add extra details to players in queue
@@ -90,7 +90,7 @@ export const handleMatchMaking = async ({
       return {
         ...player,
         turn: index,
-        score: 0,
+        totalScore: 0,
         doneTallying: false,
         inTallyMode: false,
         answers: { Name: "", Animal: "", Place: "", Thing: "" },

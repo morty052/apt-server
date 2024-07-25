@@ -79,13 +79,17 @@ const checkForfeitedAnswers = (answers: AnswerProps): boolean => {
   return false;
 };
 
-const checkForPlayerDeath = (player: PlayerProps): boolean => {
-  console.log({ strikes: player.strikes });
-  if (player.strikes + 1 >= 4) {
-    return true;
-  }
+const checkForWinner = (players: PlayerProps[]): PlayerProps => {
+  const scoresList = players.map((player) => player.totalScore);
+  const maxScore = Math.max(...scoresList);
+  const winners = players.filter((player) => player.totalScore === maxScore);
 
-  return false;
+  // *handle draw
+  if (winners.length > 1) {
+    // handle draw stuff here
+    return;
+  }
+  return winners[0];
 };
 
 const exitPlayerFromTally = async ({
@@ -128,17 +132,15 @@ const exitPlayerFromTally = async ({
 
   // * handle all players ready to leave tally mode
   if (allPlayersExitedTally) {
-    // * check if game should end after tally
-    if (round + 1 == 9) {
-      userNameSpace.to(room).emit("GAME_OVER");
+    // * check and handle if game should end after tally
+    if (round + 1 == 4) {
+      const winner = checkForWinner(updatedPlayers);
+      userNameSpace.to(room).emit("GAME_OVER", { winner });
       return;
     }
 
-    // * Present final tally modal on player device
-    userNameSpace.to(room).emit("SHOW_FINAL_TALLY", { nextRound: round + 1 });
-
-    // * reset all players answers and tallymode
-    const updatedPlayers = players.map((player) => {
+    // * reset all players answers, remove from tallymode
+    const resetedPlayers = players.map((player) => {
       return {
         ...player,
         doneTallying: false,
@@ -148,9 +150,12 @@ const exitPlayerFromTally = async ({
 
     // * update room on redis DB / increase round
     await client.hSet(room, {
-      players: JSON.stringify(updatedPlayers),
+      players: JSON.stringify(resetedPlayers),
       round: round + 1,
     });
+
+    // * Present final tally modal on player device
+    userNameSpace.to(room).emit("SHOW_FINAL_TALLY", { nextRound: round + 1 });
     return;
   }
 
@@ -255,6 +260,43 @@ export const updatePlayersAnswers = async ({
   await client.hSet(room, {
     players: JSON.stringify(updatedPlayers),
   });
+};
+
+export const updatePlayerScore = async ({
+  room,
+  playerToUpdate,
+  scoreForRound,
+}: {
+  room: string;
+  playerToUpdate: PlayerProps;
+  scoreForRound: number;
+}) => {
+  try {
+    // * get all players in room
+    const players = await getPlayersInRoom(room);
+
+    // * update target players scores
+    const updatedPlayers = players.map((player) => {
+      if (player.username === playerToUpdate.username) {
+        return {
+          ...player,
+          totalScore: player.totalScore + scoreForRound,
+        };
+      }
+      return player;
+    });
+
+    // * update room on redis
+    await client.hSet(room, {
+      players: JSON.stringify(updatedPlayers),
+    });
+
+    console.log(
+      `updatedScore for ${playerToUpdate.username}, ${scoreForRound}`
+    );
+  } catch (error) {
+    console.log(error);
+  }
 };
 
 export const updateSelectedLetter = async ({

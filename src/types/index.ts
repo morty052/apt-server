@@ -14,6 +14,7 @@ export type PlayerProps = {
   answers: AnswerProps;
   submitted: boolean;
   strikes: number;
+  totalScore?: number;
 };
 
 export type SocketProps = Socket;

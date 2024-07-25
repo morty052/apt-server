@@ -6,6 +6,7 @@ import { userNameSpace } from "./controllers/socketController";
 import { handleMatchMaking } from "./controllers/matchmakingController";
 import {
   updatePlayersAnswers,
+  updatePlayerScore,
   updateRoom,
   updateSelectedLetter,
 } from "./controllers/matchRoomController";
@@ -82,6 +83,12 @@ userNameSpace.on("connection", (socket) => {
   socket.on("PLAYER_DONE_TALLYING", async (data) => {
     const { player, room, operation } = data;
     await updateRoom({ player, room, operation: "EXIT_TALLY_MODE" });
+  });
+
+  socket.on("UPDATE_SCORES", async (data) => {
+    const { room, player, scoreForRound } = data;
+    console.log({ room, player, scoreForRound });
+    updatePlayerScore({ room, playerToUpdate: player, scoreForRound });
   });
 
   socket.on("ROUND_ENDED", async (data) => {
