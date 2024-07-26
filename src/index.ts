@@ -10,6 +10,12 @@ import {
   updateRoom,
   updateSelectedLetter,
 } from "./controllers/matchRoomController";
+import {
+  removeFromOnlineList,
+  updateOnlinePlayersList,
+  takePlayerOnline,
+  takePlayerOffline,
+} from "./controllers/onlineStatusController";
 
 async function verifyAnswer({ query, type }: { query: string; type: string }) {
   const prompt = `return a  JSON object in this format "isReal" as a boolean and "description" as a string with a short description of about 4 lines of the answer, to the following question, "is this ${type} real? " "${query}"`;
@@ -24,9 +30,11 @@ async function verifyAnswer({ query, type }: { query: string; type: string }) {
 userNameSpace.on("connection", (socket) => {
   console.log("a user connected", socket.id);
 
-  socket.on("handshake", (username, cb) => {
+  socket.on("handshake", async (username, cb) => {
     console.log("handshake", username);
     socket.join(`user-${username}`);
+    await updateOnlinePlayersList({ socketId: socket.id });
+    await takePlayerOnline({ username, socketId: socket.id });
     cb("success");
   });
 
@@ -97,8 +105,10 @@ userNameSpace.on("connection", (socket) => {
     userNameSpace.to(room).emit("READY_NEXT_ROUND", { nextTurn });
   });
 
-  socket.on("disconnect", () => {
+  socket.on("disconnect", async () => {
     console.log("user disconnected", socket.id);
+    await removeFromOnlineList({ socketId: socket.id });
+    await takePlayerOffline({ socketId: socket.id });
   });
 });
 
