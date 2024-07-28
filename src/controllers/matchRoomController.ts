@@ -36,6 +36,94 @@ const getPlayer = (players: PlayerProps[], username: string) => {
   return player;
 };
 
+export const createPrivateRoom = async ({
+  room,
+  host,
+  guests,
+}: {
+  room: string;
+  host: PlayerProps & { id: string };
+  guests: PlayerProps[];
+}) => {
+  try {
+    const queue = [host, ...guests];
+
+    console.log({ queue, guests });
+
+    //* add extra details to players in created room
+    const lobby = queue.map((player, index) => {
+      if (player.username === host.username) {
+        return {
+          ...player,
+          turn: index,
+          totalScore: 0,
+          doneTallying: false,
+          inTallyMode: false,
+          answers: { Name: "", Animal: "", Place: "", Thing: "" },
+          submitted: false,
+          joined: true,
+          character: host.character,
+        };
+      }
+      return {
+        ...player,
+        turn: index,
+        totalScore: 0,
+        doneTallying: false,
+        inTallyMode: false,
+        answers: { Name: "", Animal: "", Place: "", Thing: "" },
+        submitted: false,
+        joined: false,
+      };
+    });
+
+    const data = await client.hSet(room, {
+      players: JSON.stringify(lobby),
+      round: 0,
+      maxPlayers: lobby.length,
+      room_id: room,
+    });
+
+    console.log("created private room", data);
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const joinPrivateRoom = async (room: string, guest: PlayerProps) => {
+  const players = await getPlayersInRoom(room);
+
+  const updatedPlayers = players.map((player) => {
+    if (player.username === guest.username) {
+      return {
+        ...player,
+        joined: true,
+        character: guest.character,
+      };
+    }
+    return player;
+  });
+
+  // @ts-ignore
+  const allPlayerJoined = updatedPlayers.every((player) => player.joined);
+
+  if (allPlayerJoined) {
+    // * send players data and room name to frontend
+    userNameSpace.to(room).emit("START_PRIVATE_MATCH", {
+      queue: updatedPlayers,
+      room,
+    });
+
+    return;
+  }
+
+  const data = await client.hSet(room, {
+    players: JSON.stringify(updatedPlayers),
+  });
+
+  console.log(data);
+};
+
 const checkAllPlayersDoneTallying = (data: PlayerProps[]): boolean => {
   const allPlayersDone = data.every((player) => player.doneTallying);
 

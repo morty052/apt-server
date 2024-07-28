@@ -5,6 +5,8 @@ import { app, httpServer } from "./models/server";
 import { userNameSpace } from "./controllers/socketController";
 import { handleMatchMaking } from "./controllers/matchmakingController";
 import {
+  createPrivateRoom,
+  joinPrivateRoom,
   updatePlayersAnswers,
   updatePlayerScore,
   updateRoom,
@@ -42,6 +44,25 @@ userNameSpace.on("connection", (socket) => {
     // const dat = await client.del(`${data.lobbyType}_LOBBY`);
     // console.log(dat);
     handleMatchMaking({ data, socket, cb });
+  });
+
+  socket.on("CREATE_PRIVATE_MATCH", async (data, cb) => {
+    const { private_room, host_id, guests, host } = data;
+
+    await createPrivateRoom({ room: private_room, host, guests });
+    socket.join(private_room);
+    cb("success");
+  });
+
+  socket.on("JOIN_PRIVATE_LOBBY", async (data, cb) => {
+    const { private_room, guest } = data;
+
+    socket.join(private_room);
+    await joinPrivateRoom(private_room, guest);
+    userNameSpace.to(private_room).emit("PLAYER_JOINED", guest);
+    console.log(
+      `${guest.username} joined ${private_room} with  ${guest.character}`
+    );
   });
 
   socket.on(

@@ -1,5 +1,5 @@
 import { Socket } from "socket.io";
-export type LobbyType = "HEAD_TO_HEAD" | "FULL_HOUSE";
+export type LobbyType = "HEAD_TO_HEAD" | "FULL_HOUSE" | "PRIVATE_MATCH";
 
 export type AnswerProps = {
   Name: string;
@@ -15,6 +15,7 @@ export type PlayerProps = {
   submitted: boolean;
   strikes: number;
   totalScore?: number;
+  character?: any;
 };
 
 export type SocketProps = Socket;

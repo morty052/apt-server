@@ -118,7 +118,7 @@ export const handleMatchMaking = async ({
 
   // * join the created lobby
   // await socket.join(LOBBY_NAME);
-  console.log(LOBBY_NAME, queue.length);
+
   cb({
     message: "Function reached end ",
   });
