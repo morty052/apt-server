@@ -224,6 +224,7 @@ const exitPlayerFromTally = async ({
     if (round + 1 == 4) {
       const winner = checkForWinner(updatedPlayers);
       userNameSpace.to(room).emit("GAME_OVER", { winner });
+      client.del(room);
       return;
     }
 
