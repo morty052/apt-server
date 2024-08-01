@@ -34,7 +34,7 @@ import { userNameSpace } from "./controllers/socketController";
 // };
 
 export const handleCountDown = async ({ room }: { room: string }) => {
-  let seconds = 10;
+  let seconds = 30;
   const { round } = await getRoomDetails(room);
   console.log("round started", round);
   userNameSpace.to(room).emit("START_COUNTDOWN", { seconds, round });
@@ -43,7 +43,7 @@ export const handleCountDown = async ({ room }: { room: string }) => {
     userNameSpace.to(room).emit("TIME_UP", { seconds, round });
     console.log("round ended");
     clearTimeout(timeInterval);
-  }, 10000);
+  }, 30000);
 };
 
 // export const handleTallyCountDown_ = ({ room }: { room: string }) => {
