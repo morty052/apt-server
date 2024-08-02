@@ -221,7 +221,7 @@ const exitPlayerFromTally = async ({
   // * handle all players ready to leave tally mode
   if (allPlayersExitedTally) {
     // * check and handle if game should end after tally
-    if (round + 1 == 4) {
+    if (round + 1 == 9) {
       const winner = checkForWinner(updatedPlayers);
       userNameSpace.to(room).emit("GAME_OVER", { winner });
       client.del(room);
