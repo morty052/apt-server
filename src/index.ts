@@ -6,6 +6,7 @@ import { userNameSpace } from "./controllers/socketController";
 import { handleMatchMaking } from "./controllers/matchmakingController";
 import {
   createPrivateRoom,
+  exitPrivateRoom,
   joinPrivateRoom,
   updatePlayersAnswers,
   updatePlayerScore,
@@ -62,6 +63,16 @@ userNameSpace.on("connection", (socket) => {
     userNameSpace.to(private_room).emit("PLAYER_JOINED", guest);
     console.log(
       `${guest.username} joined ${private_room} with  ${guest.character}`
+    );
+  });
+
+  socket.on("EXIT_PRIVATE_LOBBY", async (data, cb) => {
+    const { private_room, guest } = data;
+
+    await exitPrivateRoom(private_room, guest);
+    userNameSpace.to(private_room).emit("PLAYER_LEFT", guest);
+    console.log(
+      `${guest.username} left ${private_room} with  ${guest.character}`
     );
   });
 

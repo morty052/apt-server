@@ -124,6 +124,32 @@ export const joinPrivateRoom = async (room: string, guest: PlayerProps) => {
   console.log(data);
 };
 
+export const exitPrivateRoom = async (room: string, guest: PlayerProps) => {
+  const players = await getPlayersInRoom(room);
+
+  const updatedPlayers = players.filter(
+    (player) => player.username !== guest.username
+  );
+
+  const allPlayersLeft = updatedPlayers.length <= 1;
+
+  if (allPlayersLeft) {
+    // * send players data and room name to frontend
+    userNameSpace.to(room).emit("Cancel_PRIVATE_MATCH", {
+      queue: updatedPlayers,
+      room,
+    });
+
+    return;
+  }
+
+  const data = await client.hSet(room, {
+    players: JSON.stringify(updatedPlayers),
+  });
+
+  console.log(data);
+};
+
 const checkAllPlayersDoneTallying = (data: PlayerProps[]): boolean => {
   const allPlayersDone = data.every((player) => player.doneTallying);
 
@@ -404,12 +430,6 @@ export const updateSelectedLetter = async ({
 const deleteLobby = async () => {
   const del = await client.del("HEAD_TO_HEAD_LOBBY_Eve");
   console.log(del);
-};
-
-type updateRoomReturnProps = {
-  updatedPlayersList?: PlayerProps[];
-  allPlayersSubmitted?: boolean;
-  playerToExitTally?: PlayerProps;
 };
 
 type updateRoomProps = {
