@@ -1,5 +1,7 @@
 import express from "express";
 import {
+  checkSavedAnswersForAnimal,
+  checkSavedAnswersForPlace,
   checkWord,
   createPrivateMatch,
   getHost,
@@ -11,14 +13,16 @@ import {
 } from "../services/supabase";
 import { gemini } from "../services/gemini";
 
-async function verifyAnswerGroup({
+function generatePrompt({
   Animal,
   Place,
+  type,
 }: {
-  Animal: string;
-  Place: string;
+  Animal?: string;
+  Place?: string;
+  type: "FULL" | "PLACE" | "ANIMAL";
 }) {
-  try {
+  if (type == "FULL") {
     const requiredFields1 = `return a JSON object with one field "isReal" as a boolean if the all the answers are true or false, "wrongItems" as an array with the names of the wrong values`;
     const requiredFields2 = `"descriptions" as an object with the fields "animal" an object with the fields "name" the name of the animal and "description" a description of the animal about 4 lines, "place" an object with the fields "name" the name of the place and "description" a description of the place about 4 lines`;
     const prompt = ` is this a real animal ? ${
@@ -26,7 +30,28 @@ async function verifyAnswerGroup({
     }, is this a real place ? ${
       Place || "NULL"
     } ${requiredFields1} and ${requiredFields2}`;
+    return prompt;
+  }
 
+  if (type == "ANIMAL") {
+    const requiredFields1 = `return a JSON object with one field "isReal" as a boolean if the answer is true or false, "wrongItems" as an array with the names of the wrong value`;
+    const requiredFields2 = `"descriptions" as an object with the fields "animal" an object with the fields "name" the name of the animal and "description" a description of the animal about 4 lines`;
+    const prompt = ` is this a real animal ? ${Animal}
+    } ${requiredFields1} and ${requiredFields2}`;
+    return prompt;
+  }
+
+  if (type == "PLACE") {
+    const requiredFields1 = `return a JSON object with one field "isReal" as a boolean if the answer is true or false, "wrongItems" as an array with the names of the wrong value`;
+    const requiredFields2 = `"descriptions" as an object with the fields "place" an object with the fields "name" the name of the place and "description" a description of the place about 4 lines`;
+    const prompt = ` is this a real place ? ${Place}
+    } ${requiredFields1} and ${requiredFields2}`;
+    return prompt;
+  }
+}
+
+async function verifyAnswerGroup({ prompt }: { prompt: string }) {
+  try {
     const result = await gemini.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
@@ -145,12 +170,58 @@ ApiRouter.post("/verify-answers", async (req, res) => {
   try {
     const { Place, Animal } = req.body;
 
-    const verdict = await verifyAnswerGroup({ Place, Animal });
-    res.status(200).send({ message: "success", verdict });
-    const { isReal, descriptions } = JSON.parse(verdict);
-    if (isReal) {
-      await saveGeminiAnswerTodDB(descriptions);
-      console.log("doing things in background");
+    const placeData = await checkSavedAnswersForPlace({ place: Place });
+    const animalData = await checkSavedAnswersForAnimal({ animal: Animal });
+
+    // * if both queries in database
+    if (placeData.length > 0 && animalData.length > 0) {
+      res.status(200).send({
+        message: "success",
+        verdict: {
+          isReal: true,
+          wrongItems: [],
+        },
+      });
+      return;
+    }
+
+    // * if both not in database
+    if (placeData.length === 0 && animalData.length === 0) {
+      const prompt = generatePrompt({ Place, Animal, type: "FULL" });
+      const verdict = await verifyAnswerGroup({ prompt });
+      res.status(200).send({ message: "success", verdict });
+      const { isReal, descriptions } = JSON.parse(verdict);
+      if (isReal) {
+        await saveGeminiAnswerTodDB({ descriptions, type: "FULL" });
+        console.log("doing things in background");
+      }
+      return;
+    }
+
+    // * if animal not in database
+    if (animalData.length === 0) {
+      const prompt = generatePrompt({ Animal, type: "ANIMAL" });
+      const verdict = await verifyAnswerGroup({ prompt });
+      res.status(200).send({ message: "success", verdict });
+      const { isReal, descriptions } = JSON.parse(verdict);
+      if (isReal) {
+        await saveGeminiAnswerTodDB({ descriptions, type: "ANIMAL" });
+        console.log("doing things in background");
+      }
+      return;
+    }
+
+    // * if place not in database
+    if (placeData.length === 0) {
+      const prompt = generatePrompt({ Place, type: "PLACE" });
+      const verdict = await verifyAnswerGroup({ prompt });
+      res.status(200).send({ message: "success", verdict });
+      const { isReal, descriptions } = JSON.parse(verdict);
+      if (isReal) {
+        await saveGeminiAnswerTodDB({ descriptions, type: "PLACE" });
+        console.log("doing things in background");
+      }
+      return;
     }
   } catch (error) {
     console.error("error", error);

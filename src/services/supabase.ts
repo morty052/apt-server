@@ -641,32 +641,116 @@ export const handleSignup = async ({
   }
 };
 
-export async function saveGeminiAnswerTodDB(descriptions: {
-  animal: { name: string; description: string };
-  place: { name: string; description: string };
+export async function saveGeminiAnswerTodDB({
+  descriptions,
+  type,
+}: {
+  descriptions: {
+    animal: { name: string; description: string };
+    place: { name: string; description: string };
+  };
+  type: "FULL" | "PLACE" | "ANIMAL";
 }) {
   try {
-    const { animal, place } = descriptions;
-    const { data, error } = await supabase.from("places").insert({
-      name: place.name,
-      description: place.description,
-    });
+    if (type == "FULL") {
+      const { animal, place } = descriptions;
+      const { data, error } = await supabase.from("places").insert({
+        name: place.name,
+        description: place.description,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      const { data: data2, error: error2 } = await supabase
+        .from("animals")
+        .insert({
+          name: animal.name,
+          description: animal.description,
+        });
+
+      if (error2) {
+        throw error2;
+      }
+      console.log("cached full answers");
+      return;
+    }
+
+    if (type == "ANIMAL") {
+      const { animal } = descriptions;
+      const { error: error } = await supabase.from("animals").insert({
+        name: animal.name,
+        description: animal.description,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      console.log("cached animal answer");
+      return;
+    }
+
+    if (type == "PLACE") {
+      const { place } = descriptions;
+      const { error: error } = await supabase.from("places").insert({
+        name: place.name,
+        description: place.description,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      console.log("cached place answer");
+      return;
+    }
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+export async function checkSavedAnswersForPlace({ place }: { place: string }) {
+  try {
+    const { data, error } = await supabase
+      .from("places")
+      .select("name, description")
+      .ilike("name", `${place}`);
 
     if (error) {
       throw error;
     }
 
-    const { data: data2, error: error2 } = await supabase
-      .from("animals")
-      .insert({
-        name: animal.name,
-        description: animal.description,
-      });
-
-    if (error2) {
-      throw error2;
+    if (data.length === 0) {
+      return [];
     }
-    console.log("cached answers");
+
+    return data;
+  } catch (error) {
+    console.error(error);
+  }
+}
+export async function checkSavedAnswersForAnimal({
+  animal,
+}: {
+  animal: string;
+}) {
+  try {
+    const { data, error } = await supabase
+      .from("animals")
+      .select("name, description")
+      .ilike("name", `${animal}`);
+
+    if (error) {
+      throw error;
+    }
+
+    if (data.length === 0) {
+      return [];
+    }
+
+    return data;
   } catch (error) {
     console.error(error);
   }
