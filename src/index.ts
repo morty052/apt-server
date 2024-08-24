@@ -19,6 +19,9 @@ import {
   takePlayerOnline,
   takePlayerOffline,
 } from "./controllers/onlineStatusController";
+import FriendsRouter from "./routes/Friends";
+import UserRouter from "./routes/User";
+import ApiRouter from "./routes/api";
 
 async function verifyAnswer({ query, type }: { query: string; type: string }) {
   const prompt = `return a  JSON object in this format "isReal" as a boolean and "description" as a string with a short description of about 4 lines of the answer, to the following question, "is this ${type} real? " "${query}"`;
@@ -177,6 +180,10 @@ userNameSpace.on("connection", (socket) => {
 app.get("/", async (req, res) => {
   res.send("json");
 });
+
+app.use("/friends", FriendsRouter);
+app.use("/user", UserRouter);
+app.use("/api", ApiRouter);
 
 app.post("/api/verify-answers", async (req, res) => {
   try {
