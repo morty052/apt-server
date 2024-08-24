@@ -33,36 +33,6 @@ async function verifyAnswer({ query, type }: { query: string; type: string }) {
   return text;
 }
 
-async function verifyAnswerGroup({
-  Name,
-  Animal,
-  Place,
-  Thing,
-}: {
-  Name: string;
-  Animal: string;
-  Place: string;
-  Thing: string;
-}) {
-  try {
-    const prompt = ` is this a real Name ? ${
-      Name || "NULL"
-    }, is this a real animal ? ${Animal || "NULL"}, is this a real place ? ${
-      Place || "NULL"
-    }, is this a real thing ? ${
-      Thing || "NULL"
-    }, return a JSON object with one field "isReal" as a boolean if the all the answers are true or false and "wrongItems" as an array with the names of the wrong values.`;
-
-    const result = await gemini.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-    console.log(text);
-    return text;
-  } catch (error) {
-    console.error(error);
-  }
-}
-
 userNameSpace.on("connection", (socket) => {
   console.log("a user connected", socket.id);
 
@@ -184,18 +154,6 @@ app.get("/", async (req, res) => {
 app.use("/friends", FriendsRouter);
 app.use("/user", UserRouter);
 app.use("/api", ApiRouter);
-
-app.post("/api/verify-answers", async (req, res) => {
-  try {
-    const { Name, Place, Animal, Thing } = req.body;
-
-    const verdict = await verifyAnswerGroup({ Name, Place, Animal, Thing });
-    res.status(200).send({ message: "success", verdict });
-  } catch (error) {
-    console.error("error", error);
-    res.status(400).send({ message: "error", isReal: false, error });
-  }
-});
 
 httpServer.listen(3000, () => {
   console.log("Server started on port 3000");

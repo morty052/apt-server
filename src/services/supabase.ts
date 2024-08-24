@@ -485,6 +485,32 @@ export const getHost = async (room_id: string) => {
   }
 };
 
+export const checkWord = async ({ word }: { word: string }) => {
+  try {
+    const { data, error }: any = await supabase
+      .from("words")
+      .select("word")
+      .ilike("word", word);
+
+    console.log({ word });
+    if (error) {
+      throw new Error(error);
+    }
+
+    if (data.length === 0) {
+      throw new Error("Word not found");
+    }
+
+    return {
+      data: data[0],
+      error: null,
+    };
+  } catch (error) {
+    console.error(error);
+    return { data: null, error };
+  }
+};
+
 const getPlayerStats = async ({ username }: { username: string }) => {
   try {
     const { data, error }: any = await supabase
