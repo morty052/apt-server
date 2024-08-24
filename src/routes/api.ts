@@ -7,6 +7,7 @@ import {
   getPlayers,
   getSearchResults,
   handleSignup,
+  saveGeminiAnswerTodDB,
 } from "../services/supabase";
 import { gemini } from "../services/gemini";
 
@@ -18,15 +19,18 @@ async function verifyAnswerGroup({
   Place: string;
 }) {
   try {
+    const requiredFields1 = `return a JSON object with one field "isReal" as a boolean if the all the answers are true or false, "wrongItems" as an array with the names of the wrong values`;
+    const requiredFields2 = `"descriptions" as an object with the fields "animal" an object with the fields "name" the name of the animal and "description" a description of the animal about 4 lines, "place" an object with the fields "name" the name of the place and "description" a description of the place about 4 lines`;
     const prompt = ` is this a real animal ? ${
       Animal || "NULL"
     }, is this a real place ? ${
       Place || "NULL"
-    } return a JSON object with one field "isReal" as a boolean if the all the answers are true or false and "wrongItems" as an array with the names of the wrong values.`;
+    } ${requiredFields1} and ${requiredFields2}`;
 
     const result = await gemini.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
+
     return text;
   } catch (error) {
     console.error(error);
@@ -143,6 +147,11 @@ ApiRouter.post("/verify-answers", async (req, res) => {
 
     const verdict = await verifyAnswerGroup({ Place, Animal });
     res.status(200).send({ message: "success", verdict });
+    const { isReal, descriptions } = JSON.parse(verdict);
+    if (isReal) {
+      await saveGeminiAnswerTodDB(descriptions);
+      console.log("doing things in background");
+    }
   } catch (error) {
     console.error("error", error);
     res.status(400).send({ message: "error", isReal: false, error });

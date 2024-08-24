@@ -640,3 +640,34 @@ export const handleSignup = async ({
     return { data: null, error };
   }
 };
+
+export async function saveGeminiAnswerTodDB(descriptions: {
+  animal: { name: string; description: string };
+  place: { name: string; description: string };
+}) {
+  try {
+    const { animal, place } = descriptions;
+    const { data, error } = await supabase.from("places").insert({
+      name: place.name,
+      description: place.description,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    const { data: data2, error: error2 } = await supabase
+      .from("animals")
+      .insert({
+        name: animal.name,
+        description: animal.description,
+      });
+
+    if (error2) {
+      throw error2;
+    }
+    console.log("cached answers");
+  } catch (error) {
+    console.error(error);
+  }
+}
