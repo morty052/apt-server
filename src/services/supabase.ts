@@ -789,3 +789,27 @@ export async function checkSavedAnswersForAnimal({
     console.error(error);
   }
 }
+
+export const checkEnergy = async ({ username }: { username: string }) => {
+  try {
+    const { data, error } = await supabase
+      .from("stats")
+      .select("energy_count")
+      .eq("owner", `${username}`);
+
+    const energy_count = data[0]?.energy_count || 0;
+
+    if (error) {
+      throw error;
+    }
+
+    if (energy_count > 0) {
+      return { canPlay: true, error: null };
+    } else {
+      return { canPlay: false, error: null };
+    }
+  } catch (error) {
+    console.error(error);
+    return { data: null, error };
+  }
+};

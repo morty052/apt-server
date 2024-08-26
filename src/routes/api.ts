@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  checkEnergy,
   checkSavedAnswersForAnimal,
   checkSavedAnswersForPlace,
   checkWord,
@@ -135,6 +136,7 @@ ApiRouter.post("/sign-up", async (req, res) => {
     res.status(500).send({ error });
   }
 });
+
 ApiRouter.post("/handle-referral", async (req, res) => {
   try {
     const { referralCode } = req.body;
@@ -147,6 +149,26 @@ ApiRouter.post("/handle-referral", async (req, res) => {
 
     res.status(200).send({
       data,
+      error,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ error });
+  }
+});
+
+ApiRouter.post("/check-energy", async (req, res) => {
+  try {
+    const { username } = req.body;
+    const { canPlay, error } = await checkEnergy({
+      username,
+    });
+    if (error) {
+      throw error;
+    }
+
+    res.status(200).send({
+      canPlay,
       error,
     });
   } catch (error) {
