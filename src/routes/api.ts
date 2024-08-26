@@ -4,6 +4,7 @@ import {
   checkSavedAnswersForAnimal,
   checkSavedAnswersForPlace,
   checkWord,
+  decreaseEnergy,
   getHost,
   getLeaderBoard,
   getPlayers,
@@ -169,6 +170,25 @@ ApiRouter.post("/check-energy", async (req, res) => {
 
     res.status(200).send({
       canPlay,
+      error,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ error });
+  }
+});
+
+ApiRouter.post("/decrease-energy", async (req, res) => {
+  try {
+    const { username } = req.body;
+    const { error } = await decreaseEnergy({
+      username,
+    });
+    if (error) {
+      throw error;
+    }
+
+    res.status(200).send({
       error,
     });
   } catch (error) {

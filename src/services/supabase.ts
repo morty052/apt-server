@@ -831,3 +831,37 @@ export const checkEnergy = async ({ username }: { username: string }) => {
     return { data: null, error };
   }
 };
+
+export const decreaseEnergy = async ({ username }: { username: string }) => {
+  try {
+    let newEnergyCount: number;
+    const { data, error } = await supabase
+      .from("stats")
+      .select("energy_count")
+      .eq("owner", `${username}`);
+
+    const energy_count = data[0]?.energy_count || 0;
+
+    if (error) {
+      throw error;
+    }
+
+    if (energy_count <= 0) {
+      return;
+    }
+    newEnergyCount = energy_count - 1;
+    const { error: updateError } = await supabase
+      .from("stats")
+      .update({
+        energy_count: newEnergyCount,
+      })
+      .eq("owner", `${username}`);
+    if (updateError) {
+      throw updateError;
+    }
+    return { error: null };
+  } catch (error) {
+    console.error(error);
+    return { error };
+  }
+};
