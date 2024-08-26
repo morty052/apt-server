@@ -636,6 +636,23 @@ export const handleReferral = async ({ code }: { code: string }) => {
   }
 };
 
+const createUserStats = async ({ username }: { username: string }) => {
+  try {
+    const { data, error } = await supabase
+      .from("stats")
+      .insert({ owner: username })
+      .select("id");
+    if (error) {
+      throw error;
+    }
+
+    return data[0].id;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+};
+
 export const handleSignup = async ({
   username,
   email,
@@ -651,6 +668,7 @@ export const handleSignup = async ({
 }) => {
   try {
     const AvatarId = await createUserAvatar(avatar);
+    const statsId = await createUserStats({ username });
 
     const { data, error } = await supabase
       .from("users")
@@ -668,7 +686,7 @@ export const handleSignup = async ({
       throw error;
     }
 
-    return { data: data[0].id, error: null };
+    return { data: { user_id: data[0].id, stats_id: statsId }, error: null };
   } catch (error) {
     console.error(error);
     return { data: null, error };
