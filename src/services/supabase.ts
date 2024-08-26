@@ -1,11 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 import { AvatarObject } from "../types";
+import { Database } from "../types/database.types";
 
 const projectUrl = "https://gepjayxrfvoylhivwhzq.supabase.co";
 const anonKey =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdlcGpheXhyZnZveWxoaXZ3aHpxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTU5NDM5MDMsImV4cCI6MjAzMTUxOTkwM30.dd-IHKAsG2TXONjU451yHPw6CGtH2u0aflXOX3r9FgA";
 
-export const supabase = createClient(projectUrl, anonKey);
+export const supabase = createClient<Database>(projectUrl, anonKey);
 
 const apiUrl = "https://exp.host/--/api/v2/push/send";
 
@@ -600,21 +601,46 @@ const createUserAvatar = async (avatarSelections: AvatarObject) => {
   }
 };
 
+export const handleReferral = async ({ code }: { code: string }) => {
+  try {
+    const referrerUsername = code.slice(4).replace("-", "");
+    const { error } = await supabase.rpc(
+      "increase_referral_count",
+      {
+        owner_name: referrerUsername,
+      },
+      {
+        get: false,
+      }
+    );
+
+    console.info("has code", code);
+
+    if (error) {
+      throw error;
+    }
+    return { error: null };
+  } catch (error) {
+    console.error(error);
+    return { data: null, error };
+  }
+};
+
 export const handleSignup = async ({
   username,
   email,
   password,
   expo_push_token,
   avatar,
+  referralCode,
 }: {
   username: string;
   email: string;
   password: string;
   expo_push_token: string;
   avatar: AvatarObject;
+  referralCode?: string;
 }) => {
-  console.log("signup", username, email, password, expo_push_token);
-
   try {
     const AvatarId = await createUserAvatar(avatar);
 

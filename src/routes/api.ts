@@ -3,11 +3,10 @@ import {
   checkSavedAnswersForAnimal,
   checkSavedAnswersForPlace,
   checkWord,
-  createPrivateMatch,
   getHost,
   getLeaderBoard,
   getPlayers,
-  getSearchResults,
+  handleReferral,
   handleSignup,
   saveGeminiAnswerTodDB,
 } from "../services/supabase";
@@ -115,6 +114,7 @@ ApiRouter.post("/get-host", async (req, res) => {
 ApiRouter.post("/sign-up", async (req, res) => {
   try {
     const { username, email, password, expo_push_token, avatar } = req.body;
+
     const { data, error } = await handleSignup({
       username,
       email,
@@ -125,13 +125,26 @@ ApiRouter.post("/sign-up", async (req, res) => {
     if (error) {
       throw error;
     }
-    console.log({
-      username,
-      email,
-      password,
-      expo_push_token,
-      avatar,
+
+    res.status(200).send({
+      data,
+      error,
     });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ error });
+  }
+});
+ApiRouter.post("/handle-referral", async (req, res) => {
+  try {
+    const { referralCode } = req.body;
+    const { data, error } = await handleReferral({
+      code: referralCode,
+    });
+    if (error) {
+      throw error;
+    }
+
     res.status(200).send({
       data,
       error,
