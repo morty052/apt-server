@@ -604,21 +604,31 @@ const createUserAvatar = async (avatarSelections: AvatarObject) => {
 export const handleReferral = async ({ code }: { code: string }) => {
   try {
     const referrerUsername = code.slice(4).replace("-", "");
-    const { error } = await supabase.rpc(
-      "increase_referral_count",
-      {
-        owner_name: referrerUsername,
-      },
-      {
-        get: false,
-      }
-    );
 
-    console.info("has code", code);
+    console.info({ referrerUsername });
+    const { data, error: fetchingError } = await supabase
+      .from("stats")
+      .select("referral_count")
+      .ilike("owner", `${referrerUsername}`);
+
+    if (fetchingError) {
+      throw fetchingError;
+    }
+
+    const oldCount = data[0].referral_count;
+
+    console.info({ data });
+
+    const { error } = await supabase
+      .from("stats")
+      .update({ referral_count: oldCount + 1 })
+      .ilike("owner", `${referrerUsername}`)
+      .select("referral_count");
 
     if (error) {
       throw error;
     }
+
     return { error: null };
   } catch (error) {
     console.error(error);
@@ -632,14 +642,12 @@ export const handleSignup = async ({
   password,
   expo_push_token,
   avatar,
-  referralCode,
 }: {
   username: string;
   email: string;
   password: string;
   expo_push_token: string;
   avatar: AvatarObject;
-  referralCode?: string;
 }) => {
   try {
     const AvatarId = await createUserAvatar(avatar);
