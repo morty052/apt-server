@@ -1,6 +1,8 @@
 import express from "express";
 import {
   checkEnergy,
+  checkIfemailExists,
+  checkIfUsernameExists,
   checkSavedAnswersForAnimal,
   checkSavedAnswersForPlace,
   checkWord,
@@ -64,6 +66,40 @@ async function verifyAnswerGroup({ prompt }: { prompt: string }) {
 }
 
 const ApiRouter = express.Router();
+
+ApiRouter.post("/check-username-exists", async (req, res) => {
+  try {
+    const { username } = req.body;
+    const { data, error } = await checkIfUsernameExists(username);
+    if (error) {
+      throw error;
+    }
+    res.status(200).send({
+      data,
+      error,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ error });
+  }
+});
+
+ApiRouter.post("/check-email-exists", async (req, res) => {
+  try {
+    const { email } = req.body;
+    const { data, error } = await checkIfemailExists(email);
+    if (error) {
+      throw error;
+    }
+    res.status(200).send({
+      data,
+      error,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ error });
+  }
+});
 
 ApiRouter.get("/leaderboard", async (req, res) => {
   try {

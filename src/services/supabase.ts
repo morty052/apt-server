@@ -96,6 +96,48 @@ export const getPlayers = async (playerList: string[]): Promise<any> => {
   }
 };
 
+export const checkIfemailExists = async (email: string) => {
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .select("email")
+      .ilike("email", email);
+
+    if (error) {
+      throw error;
+    }
+
+    if (data?.length > 0) {
+      return { data: true, error: null };
+    }
+
+    return { data: false, error: null };
+  } catch (error) {
+    return { data: null, error };
+  }
+};
+
+export const checkIfUsernameExists = async (username: string) => {
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .select("username")
+      .ilike("username", username);
+
+    if (error) {
+      throw error;
+    }
+
+    if (data?.length > 0) {
+      return { data: true, error: null };
+    }
+
+    return { data: false, error: null };
+  } catch (error) {
+    return { data: null, error };
+  }
+};
+
 export async function getLeaderBoard() {
   try {
     const { data, error } = await supabase
